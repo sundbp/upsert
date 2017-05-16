@@ -37,6 +37,22 @@ class Upsert
       end
     end
 
+    DEFAULT_OPTIONS = {
+      assume_function_exists: true,
+      assume_native: false,
+    }
+
+    # @option options [TrueClass,FalseClass]
+    #   :assume_function_exists (true) Assume the function has already been defined correctly by another process.
+    #   :assume_native (false) When true, assume that native upsert can be used.
+    def default_options=(options)
+      @default_options = DEFAULT_OPTIONS.merge(options)
+    end
+
+    def default_options
+      @default_options || DEFAULT_OPTIONS
+    end
+
     # @param [Mysql2::Client,Sqlite3::Database,PG::Connection,#metal] connection A supported database connection.
     #
     # Clear any database functions that may have been created.
@@ -180,11 +196,19 @@ class Upsert
     @assume_function_exists
   end
 
+  # @private
+  def assume_native?
+    @assume_native
+  end
+
   # @param [Mysql2::Client,Sqlite3::Database,PG::Connection,#metal] connection A supported database connection.
   # @param [String,Symbol] table_name The name of the table into which you will be upserting.
   # @param [Hash] options
-  # @option options [TrueClass,FalseClass] :assume_function_exists (true) Assume the function has already been defined correctly by another process.
+  # @option options [TrueClass,FalseClass]
+  #   :assume_function_exists (true) Assume the function has already been defined correctly by another process.
+  #   :assume_native (false) When true, assume that native upsert can be used.
   def initialize(connection, table_name, options = {})
+    options = self.class.default_options.merge(options)
     @table_name = table_name.to_s
     metal = Upsert.metal connection
     @flavor = Upsert.flavor metal
@@ -196,7 +220,8 @@ class Upsert
     @connection = Connection.const_get(adapter).new self, metal
     @merge_function_class = MergeFunction.const_get adapter
     @merge_function_cache = {}
-    @assume_function_exists = options.fetch :assume_function_exists, true
+    @assume_function_exists = options.fetch :assume_function_exists
+    @assume_native = options.fetch :assume_native
   end
 
   # Upsert a row given a selector and a setter.
@@ -227,7 +252,7 @@ class Upsert
 
   def merge_function(row)
     cache_key = [row.selector.keys, row.setter.keys]
-    @merge_function_cache[cache_key] ||= merge_function_class.new(self, row.selector.keys, row.setter.keys, assume_function_exists?)
+    @merge_function_cache[cache_key] ||= merge_function_class.new(self, row.selector.keys, row.setter.keys, assume_function_exists?, assume_native?)
   end
 
   # @private

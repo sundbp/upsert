@@ -44,9 +44,10 @@ class Upsert
       attr_reader :quoted_selector_names
 
       def initialize(controller, *args)
-        super
+        super(controller, *args[0...-1])
         @quoted_setter_names = setter_keys.map { |k| connection.quote_ident k }
         @quoted_selector_names = selector_keys.map { |k| connection.quote_ident k }
+        @assume_native = args.last
       end
 
       def execute(row)
@@ -107,7 +108,11 @@ class Upsert
       end
 
       def use_pg_native?
-        server_version >= 95 && unique_index_on_selector?
+        assume_native? || (server_version >= 95 && unique_index_on_selector?)
+      end
+
+      def assume_native?
+        @assume_native
       end
 
       def server_version
