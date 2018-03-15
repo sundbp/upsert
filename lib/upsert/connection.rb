@@ -20,12 +20,26 @@ class Upsert
       end
     end
 
+    def jdbc?
+      puts metal
+      puts metal.class.name
+      raise "boom!"
+    end
+
     def bind_value(v)
       case v
-      when Time, DateTime
-        Upsert.utc_iso8601 v
-      when Date
-        v.strftime ISO8601_DATE
+      # when Time, DateTime
+      #   if jdbc?
+      #     v
+      #   else
+      #     Upsert.utc_iso8601 v
+      #   end
+      # when Date
+      #   if jdbc?
+      #     v
+      #   else
+      #     v.strftime ISO8601_DATE
+      #   end
       when Symbol
         v.to_s
       else

@@ -1,3 +1,5 @@
+require 'java'
+
 class Upsert
   class Connection
     # @private
@@ -30,6 +32,10 @@ class Upsert
         v.value.to_java_bytes.java_object
       end
 
+      def timestamp(v)
+        java.sql.Timestamp.new(v.to_time.to_java.getTime)
+      end
+
       def execute(sql, params = nil)
         has_result = if params
           Upsert.logger.debug { %{[upsert] #{sql} with #{params.inspect}} }
@@ -49,6 +55,8 @@ class Upsert
             when NilClass
               # http://stackoverflow.com/questions/4243513/why-does-preparedstatement-setnull-requires-sqltype
               statement.setObject i+1, nil
+            when DateTime
+              statement.setTimestamp i+1, timestamp(v)
             else
               setter = setters[v.class.name]
               statement.send setter, i+1, v
